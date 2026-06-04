@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spllint"
+version = "0.1.0"
+description = "Lint and format Splunk SPL searches for correctness and performance."
+readme = "README.md"
+authors = [{ name = "Joshua John", email = "josh202@gmail.com" }]
+requires-python = ">=3.8"
+license = { text = "MIT" }
+keywords = ["splunk", "spl", "linter", "formatter", "siem", "observability"]
+
+[project.scripts]
+spllint = "spllint.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
