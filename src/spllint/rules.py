@@ -28,7 +28,7 @@ def lint(spl: str) -> List[Finding]:
             add(0, "high", "no-index", "Search has no index= — it will scan all indexes.")
         if re.search(r"\bindex\s*=\s*\*", text, re.I):
             add(0, "high", "index-wildcard", "index=* scans every index; name the index.")
-        for m in re.finditer(r"=\s*\*\w", text):
+        if re.search(r"=\s*\*\w", text):
             add(0, "medium", "leading-wildcard", "Leading wildcard (=*term) can't use the index — slow.")
         if not re.search(r"\bsourcetype\s*=", text, re.I):
             add(0, "low", "no-sourcetype", "Consider adding sourcetype= to narrow the search.")
@@ -40,12 +40,16 @@ def lint(spl: str) -> List[Finding]:
             add(i, "medium", "transaction", "`transaction` is memory-heavy — prefer `stats`/`streamstats` when possible.")
         if s.command == "stats" and i == 0:
             add(i, "low", "stats-first", "Consider `tstats` over accelerated data models for big speedups.")
-        if s.command in ("table", "fields") and i < len(stages) - 1:
-            pass
-        if s.command == "sort" and not re.search(r"\b\d+\b|^\s*-?\w", s.args):
-            add(i, "low", "sort-unbounded", "Unbounded `sort` — add a limit, e.g. `sort 1000 -_time`.")
-        if s.command == "rex" and "max_match" not in s.args and re.search(r"\(\?P?<", s.args):
-            pass
+        # A subsearch ([ ... ]) is capped at 10k results / 60s; it may silently truncate.
+        if "[" in s.args:
+            add(i, "medium", "subsearch", "Subsearch is capped at 10k results / 60s — it may silently truncate; prefer `stats`/`lookup`.")
+        # `sort` with no leading positive count (or `sort 0`) sorts the whole result set.
+        if s.command == "sort":
+            m = re.match(r"\s*(\d+)\b", s.args)
+            if m is None or int(m.group(1)) == 0:
+                add(i, "low", "sort-unbounded", "Unbounded `sort` — add a limit, e.g. `sort 1000 -_time`.")
+        if s.command == "mvexpand":
+            add(i, "low", "mvexpand", "`mvexpand` multiplies the event count — it can blow up the row set.")
 
     # field selection should come before expensive later stages? (informational)
     cmds = [s.command for s in stages]

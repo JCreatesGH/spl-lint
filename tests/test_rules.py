@@ -27,3 +27,23 @@ def test_high_severity_sorted_first():
 def test_clean_query_minimal_findings():
     findings = lint("index=web sourcetype=access status=500 | stats count by uri | fields uri count")
     assert all(f.severity != "high" for f in findings)
+
+
+def test_sort_unbounded_logic():
+    # No leading count -> flagged; an explicit positive count -> not flagged.
+    assert "sort-unbounded" in rules("index=web | sort -_time")
+    assert "sort-unbounded" not in rules("index=web | sort 1000 -_time")
+    assert "sort-unbounded" in rules("index=web | sort 0 -_time")   # 0 means unlimited
+
+
+def test_subsearch_flagged():
+    assert "subsearch" in rules("index=web [ search index=err | fields id ] | stats count")
+
+
+def test_mvexpand_flagged():
+    assert "mvexpand" in rules("index=web | mvexpand recipients")
+
+
+def test_leading_wildcard_emitted_once():
+    findings = [f for f in lint("index=web a=*x b=*y") if f.rule == "leading-wildcard"]
+    assert len(findings) == 1
