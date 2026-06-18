@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spllint"
-version = "0.1.0"
+version = "0.2.0"
 description = "Lint and format Splunk SPL searches for correctness and performance."
 readme = "README.md"
 authors = [{ name = "Joshua John", email = "josh202@gmail.com" }]

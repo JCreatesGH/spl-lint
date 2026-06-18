@@ -30,14 +30,26 @@ def lint(spl: str) -> List[Finding]:
             add(0, "high", "index-wildcard", "index=* scans every index; name the index.")
         if re.search(r"=\s*\*\w", text):
             add(0, "medium", "leading-wildcard", "Leading wildcard (=*term) can't use the index — slow.")
+        # `field=*` (star then space/end) matches every event that has the field — a no-op filter.
+        for m in re.finditer(r"\b(\w+)\s*=\s*\*(?=\s|$)", text):
+            if m.group(1).lower() != "index":      # index=* has its own rule
+                add(0, "low", "wildcard-field",
+                    f"`{m.group(1)}=*` matches all events with that field — a no-op filter; remove it.")
+                break
         if not re.search(r"\bsourcetype\s*=", text, re.I):
             add(0, "low", "no-sourcetype", "Consider adding sourcetype= to narrow the search.")
 
     for i, s in enumerate(stages):
         if s.command == "join":
             add(i, "high", "join", "`join` is expensive and capped at 50k rows — prefer `stats` by a key.")
+        if s.command in ("append", "appendcols"):
+            add(i, "medium", "append",
+                f"`{s.command}` runs a capped subsearch (50k rows / time-limited) — prefer `stats`/`lookup`.")
         if s.command == "transaction":
             add(i, "medium", "transaction", "`transaction` is memory-heavy — prefer `stats`/`streamstats` when possible.")
+        if s.command == "dedup":
+            add(i, "low", "dedup",
+                "`dedup` buffers events to de-duplicate; for latest-per-key, `stats latest(...) by <key>` is usually faster.")
         if s.command == "stats" and i == 0:
             add(i, "low", "stats-first", "Consider `tstats` over accelerated data models for big speedups.")
         # A subsearch ([ ... ]) is capped at 10k results / 60s; it may silently truncate.

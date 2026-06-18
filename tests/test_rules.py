@@ -47,3 +47,22 @@ def test_mvexpand_flagged():
 def test_leading_wildcard_emitted_once():
     findings = [f for f in lint("index=web a=*x b=*y") if f.rule == "leading-wildcard"]
     assert len(findings) == 1
+
+
+def test_flags_append_and_appendcols():
+    assert "append" in rules("index=web | append [search index=db]")
+    assert "append" in rules("index=web | appendcols [search index=db]")
+
+
+def test_flags_noop_wildcard_field_but_not_index_wildcard():
+    assert "wildcard-field" in rules("index=web host=* status=500")
+    # index=* must be reported as index-wildcard, not the generic no-op field rule
+    r = rules("index=* error")
+    assert "index-wildcard" in r and "wildcard-field" not in r
+    # a leading wildcard (=*term) is its own rule, not a no-op field
+    assert "wildcard-field" not in rules("index=web user=*admin")
+
+
+def test_flags_dedup():
+    assert "dedup" in rules("index=web | dedup host")
+    assert "dedup" not in rules("index=web | stats latest(status) by host")
