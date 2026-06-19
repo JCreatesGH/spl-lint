@@ -3,6 +3,19 @@
 All notable changes are documented here, following
 [Keep a Changelog](https://keepachangelog.com/) and [SemVer](https://semver.org/).
 
+## [0.3.0]
+
+### Added
+- **`map`** (high) — `map` runs a whole subsearch per input row (capped by `maxsearches`),
+  very slow and often silently truncating; redesign with `stats`/`lookup`.
+- **`delete`** (high) — `delete` marks events unsearchable and is effectively irreversible;
+  it should never appear in a saved or scheduled search.
+- **`eventstats`** (medium) — keeps every event in memory while aggregating; prefer `stats`
+  on large result sets.
+- **`streamstats-unbounded`** (low) — `streamstats` with no `window=`/`time_window=`
+  accumulates over all prior events.
+- **`table-star`** (low) — `table *` / `fields *` selects every field — a no-op.
+
 ## [0.2.0]
 
 ### Added

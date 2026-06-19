@@ -62,6 +62,21 @@ def lint(spl: str) -> List[Finding]:
                 add(i, "low", "sort-unbounded", "Unbounded `sort` — add a limit, e.g. `sort 1000 -_time`.")
         if s.command == "mvexpand":
             add(i, "low", "mvexpand", "`mvexpand` multiplies the event count — it can blow up the row set.")
+        if s.command == "map":
+            add(i, "high", "map",
+                "`map` runs a whole subsearch per input row (capped by maxsearches, default 10) — very slow and may silently truncate; redesign with `stats`/`lookup`.")
+        if s.command == "delete":
+            add(i, "high", "delete",
+                "`delete` marks events unsearchable and is effectively irreversible — it should never appear in a saved or scheduled search.")
+        if s.command == "eventstats":
+            add(i, "medium", "eventstats",
+                "`eventstats` holds every event in memory while computing the aggregate — for large result sets prefer `stats`.")
+        if s.command == "streamstats" and not re.search(r"\b(?:window|time_window)\s*=", s.args, re.I):
+            add(i, "low", "streamstats-unbounded",
+                "`streamstats` with no `window=` accumulates over all prior events — bound it with `window=<N>`.")
+        if s.command in ("table", "fields") and re.fullmatch(r"\+?\s*\*", s.args.strip()):
+            add(i, "low", "table-star",
+                f"`{s.command} *` selects every field — a no-op; list only the fields you need.")
 
     # field selection should come before expensive later stages? (informational)
     cmds = [s.command for s in stages]

@@ -66,3 +66,33 @@ def test_flags_noop_wildcard_field_but_not_index_wildcard():
 def test_flags_dedup():
     assert "dedup" in rules("index=web | dedup host")
     assert "dedup" not in rules("index=web | stats latest(status) by host")
+
+
+def test_flags_map_as_high():
+    findings = lint("index=web | map [search index=db host=$host$]")
+    assert "map" in {f.rule for f in findings}
+    assert any(f.rule == "map" and f.severity == "high" for f in findings)
+
+
+def test_flags_delete_as_high():
+    findings = lint("index=web error | delete")
+    assert any(f.rule == "delete" and f.severity == "high" for f in findings)
+
+
+def test_flags_eventstats():
+    assert "eventstats" in rules("index=web | eventstats avg(rtt) as avg_rtt")
+    assert "eventstats" not in rules("index=web | stats avg(rtt) by host")
+
+
+def test_streamstats_window_logic():
+    assert "streamstats-unbounded" in rules("index=web | streamstats count by host")
+    assert "streamstats-unbounded" not in rules("index=web | streamstats window=10 count by host")
+    assert "streamstats-unbounded" not in rules("index=web | streamstats time_window=5m sum(bytes)")
+
+
+def test_flags_table_star_noop():
+    assert "table-star" in rules("index=web | table *")
+    assert "table-star" in rules("index=web | fields *")
+    assert "table-star" in rules("index=web | fields + *")
+    # a real field list is not a no-op
+    assert "table-star" not in rules("index=web | table host status uri")
